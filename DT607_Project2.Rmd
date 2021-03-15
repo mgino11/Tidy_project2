@@ -1,0 +1,215 @@
+---
+title: "Project #2"
+author: "MGinorio"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+## Preparing different datasets for downstream analysis work
+
+## Task{.tabset .tabset-pills}
+
+### Overview 
+
+
+**Seen below is the initial shape of data on load. Unsparingly, it is exactly the same as the original image. With it now loaded into R, we can begin discussing and then fixing the issues with our data**
+
+![](images/wikipedia- undf_boxer.PNG)
+
+(1) Create a .CSV file (or optionally, a MySQL database!) that includes all of the information
+included in the dataset. You’re encouraged to use a “wide” structure similar to how the information appears in the discussion item, so that you can practice tidying and transformations as described below.
+
+(2) Read the information from your .CSV file into R, and use tidyr and dplyr as needed to tidy and transform your data. [Most of your grade will be based on this step!
+(3) Perform the analysis requested in the discussion item
+(4) Your code should be in an R Markdown file, posted to rpubs.com, and should include narrative descriptions of your data cleanup work, analysis, and conclusions. 
+
+- The URL to the .Rmd file in your GitHub repository. and
+- The URL for your rpubs.com web page.
+
+
+
+
+### Packages
+
+```{r load-packages, message=FALSE, warning=FALSE}
+
+#Packages used
+
+library(tidytext)
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(plotly)
+library(stringr)
+library(DT)
+
+```
+
+### Dataset 
+#### {.tabset}
+##### Dataset #1
+
+Maria A Ginorio
+
+[Undefeated Boxers Data](https://en.wikipedia.org/wiki/List_of_undefeated_world_boxing_champions)
+
+```{r}
+
+boxing <-read.csv("https://raw.githubusercontent.com/mgino11/Tidy_project2/main/Project2.csv",stringsAsFactors = FALSE)
+
+datatable(boxing)
+
+```
+
+
+##### Dataset #2
+
+Euclides Rodriguez
+
+```{r}
+study <- read.csv("https://raw.githubusercontent.com/engine2031/Data-607/main/Project%202_Privacy%20Suppresion%20Education%20Data2.csv")
+
+datatable(study)
+```
+
+##### Dataset #3
+Peter Gatica 
+
+```{r}
+nba_stats <- read.csv("https://raw.githubusercontent.com/audiorunner13/Masters-Coursework/main/DATA607%20Spring%202021/Week6/Data/NBA_Player_Stats.txt")
+
+datatable(nba_stats)
+```
+
+#### {-}
+
+### Tidying Data
+#### {.tabset}
+#### Boxing
+
+**Clean data**
+
+Glimpse the data we can see it has 31 rows and 8 columns all in chr
+
+
+```{r, message=FALSE}
+glimpse(boxing)
+```
+Lets start by selecting only the columns we are interested in working on. In this case we will create a subset of the data and drop Champ year, title defense and Notes.
+
+```{r}
+tidy_box <- boxing %>%
+  select(-Title, -Title.Defense, -Notes, -Champ.Year)
+
+datatable(tidy_box)
+```
+**Cleaning Records**
+
+1) The first task turning empty spaces into NA
+
+```{r}
+tidy_box %>%
+  select(Country:Weight.Class) %>%
+  na_if("")
+```
+2 ) Fix the column Record - format wins/losses/draws
+
+58    = wins
+0     = losses
+10    = draws
+
+
+```{r}
+box_df <-tidy_box %>%
+  separate(Record, c("wins","loss", "draws"), sep = "[^0-9]", convert = TRUE, remove = TRUE)
+  
+box_df
+
+
+```
+
+3) Now we reorganize the data using pivot longer in order to have a better view the country, the boxer, the score and the count of wins, losses or draws in the category of world champion.
+
+```{r, warning=FALSE}
+box1 <- box_df %>%
+  pivot_longer(box_df,
+               cols = c(wins:draws),
+               names_to = "score",
+               values_to = "times",
+               values_drop_na = T)
+box1
+  
+```
+4) Now that we have the data organized and tidy we can proceed to investigate more about the data we have
+
+- How Many boxers come from the US?
+
+```{r}
+box1 %>%
+  count(Country, sort = T)
+```
+what weight class is the most prominent among world champions?
+
+```{r}
+box1 %>%
+  count(Weight.Class, sort = T)
+```
+In order to obtain arithmetic calculations we need to use pivot wider to be able to compute the information from the data.
+
+
+```{r}
+undefeated_boxers <- box1 %>%
+ pivot_wider(names_from = score, values_from = times)
+
+undefeated_boxers
+  
+```
+
+We calculate the average wins per boxer and the average draws.
+
+```{r}
+undefeated_boxers %>%
+  mutate(avg_wins = wins/wins+loss+draws,
+         avg_draws = draws/wins+loss+draws) %>%
+  arrange(desc(avg_wins))
+        
+```
+
+### Graphs
+##### {.tabset}
+#### Boxing
+
+I want to interpret graphically the amount of wins by boxer and filled by country
+
+```{r}
+undefeated_boxers %>%
+  ggplot(aes(Boxer,wins,
+             color = Country))+ 
+  geom_point()
+
+```
+2) Interpret graphically the wins by weight class we can see how light weight and minimum weight are the ones with the most wins however, most undefeated champions do not belong to middleweight
+```{r}
+undefeated_boxers %>%
+  ggplot(aes(wins, color = Weight.Class))+
+  geom_histogram(binwidth = 2, size = 1)+
+  labs(title = "Wins by Weightclass")
+```
+
+
+##### {-}
+
+### Conclusion
+#### Boxing
+
+Thanks to the data wrangling I was able to determine that:
+1) Most undefeated boxers come from the US followed by the UK
+2) the most prominent weight class for undefeated boxers is middle weight and super feather weight.
+3)The average win for an undefeated boxer is 11 wins and 10 draws.
+
+
+
+
+
+
